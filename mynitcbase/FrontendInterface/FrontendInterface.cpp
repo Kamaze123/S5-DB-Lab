@@ -12,7 +12,7 @@
 #include "../Disk_Class/Disk.h"
 #include "../Frontend/Frontend.h"
 #include "../define/constants.h"
-
+#include<sstream>
 using namespace std;
 
 int getOperator(string op_str);
