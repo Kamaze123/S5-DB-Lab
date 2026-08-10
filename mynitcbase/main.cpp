@@ -14,42 +14,24 @@
 //   //return FrontendInterface::handleFrontend(argc, argv);
 // }
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[]) {
   Disk disk_run;
+  StaticBuffer buffer;
+  OpenRelTable cache;
 
-  // create objects for the relation catalog and attribute catalog
-  RecBuffer relCatBuffer(RELCAT_BLOCK);
-  RecBuffer attrCatBuffer(ATTRCAT_BLOCK);
+  
+  for(int i = 0; i < 2; i++){
+    //get the relation catalog entry using RelCacheTable::getRelCatEntry()
+    RelCatEntry relCatEntry;
+    RelCacheTable::getRelCatEntry(i, &relCatEntry);
+    printf("Relation: %s\n", relCatEntry.relName);
 
-  HeadInfo relCatHeader;
-  HeadInfo attrCatHeader;
+    for(int j = 0; j < relCatEntry.numAttrs; j++){
+      AttrCatEntry attrCatEntry;
+      AttrCacheTable::getAttrCatEntry(i, j, &attrCatEntry);
 
-  relCatBuffer.getHeader(&relCatHeader);
-  attrCatBuffer.getHeader(&attrCatHeader);
-
-  for(int i = 0; i < relCatHeader.numEntries; i++){
-
-    Attribute relCatRecord[RELCAT_NO_ATTRS];
-    relCatBuffer.getRecord(relCatRecord, i);
-
-    printf("Relation: %s\n", relCatRecord[RELCAT_REL_NAME_INDEX].sVal);
-
-    for(int j = 0; j < attrCatHeader.numEntries; j++){
-      Attribute attrCatRecord[ATTRCAT_NO_ATTRS];
-      attrCatBuffer.getRecord(attrCatRecord, j);
-
-      if (strcmp(attrCatRecord[ATTRCAT_REL_NAME_INDEX].sVal, relCatRecord[RELCAT_REL_NAME_INDEX].sVal) == 0){
-        const char *attrType;
-        if ((int)attrCatRecord[ATTRCAT_ATTR_TYPE_INDEX].nVal == NUMBER) {
-          attrType = "NUM";
-        }else{
-          attrType = "STR";
-        }
-
-        printf("  %s: %s\n", attrCatRecord[ATTRCAT_ATTR_NAME_INDEX].sVal, attrType);
-      }
+      printf("  %s: %s\n", attrCatEntry.attrName, attrCatEntry.attrType == NUMBER ? "NUM" : "STR");
     }
-    printf("\n");
   }
 
   return 0;
