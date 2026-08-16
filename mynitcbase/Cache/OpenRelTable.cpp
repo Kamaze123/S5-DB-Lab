@@ -103,3 +103,124 @@ OpenRelTable::~OpenRelTable() {
     }
   }
 }
+
+int OpenRelTable::closeRel(int relId) {
+  if (relId < 0 || relId >= MAX_OPEN || relId == RELCAT_RELID || relId == ATTRCAT_RELID) {
+    return E_OUTOFBOUND;   // can't close RELCAT/ATTRCAT — they stay open always
+  }
+
+  if (RelCacheTable::relCache[relId] == nullptr) {
+    return E_RELNOTOPEN;
+  }
+
+  free(RelCacheTable::relCache[relId]);
+  RelCacheTable::relCache[relId] = nullptr;
+
+  AttrCacheEntry* entry = AttrCacheTable::attrCache[relId];
+  while (entry != nullptr) {
+    AttrCacheEntry* temp = entry;
+    entry = entry->next;
+    free(temp);
+  }
+  AttrCacheTable::attrCache[relId] = nullptr;
+
+  return SUCCESS;
+}
+
+int OpenRelTable::openRel(char relName[ATTR_SIZE]){
+  int relId = -1;
+  for (int i = 2; i < MAX_OPEN; i++) {   // start at 2, since 0=RELCAT, 1=ATTRCAT
+    if (RelCacheTable::relCache[i] == nullptr) {
+      relId = i;
+      break;
+    }
+  }
+
+  if (relId == -1) {
+    return E_CACHEFULL;   // no free relId slots — check your Errors.h for exact name
+  }
+
+  RelCatEntry relCatEntry;
+  RecId relCatRecId = {-1, -1};
+
+  int relCatBlockNum = RELCAT_BLOCK;
+
+  while (relCatBlockNum != -1) {
+    RecBuffer relCatBlock(relCatBlockNum);
+
+    HeadInfo head;
+    relCatBlock.getHeader(&head);
+
+    Attribute record[RELCAT_NO_ATTRS];
+    for (int slot = 0; slot < head.numSlots; slot++) {
+      relCatBlock.getRecord(record, slot);
+      if (strcmp(record[RELCAT_REL_NAME_INDEX].sVal, relName) == 0) {
+        RelCacheTable::recordToRelCatEntry(record, &relCatEntry);
+        relCatRecId.block = relCatBlockNum;
+        relCatRecId.slot = slot;
+        break;
+      }
+    }
+
+    if (relCatRecId.block != -1) break;   // found it, stop scanning
+    relCatBlockNum = head.rblock;          // move to next block in the chain
+  }
+
+  if (relCatRecId.block == -1) {
+    return E_RELNOTEXIST;   // scanned all of RELCAT, no match found
+  }
+
+  RelCacheEntry* relCacheEntry = (RelCacheEntry*)malloc(sizeof(RelCacheEntry));
+  relCacheEntry->relCatEntry = relCatEntry;
+  relCacheEntry->recId = relCatRecId;
+  RelCacheTable::relCache[relId] = relCacheEntry;
+
+  AttrCacheEntry* head_ = nullptr;
+  AttrCacheEntry* tail_ = nullptr;
+
+  int attrCatBlockNum = ATTRCAT_BLOCK;
+
+  while (attrCatBlockNum != -1) {
+    RecBuffer attrCatBlock(attrCatBlockNum);
+
+    HeadInfo head;
+    attrCatBlock.getHeader(&head);
+
+    Attribute record[ATTRCAT_NO_ATTRS];
+    for (int slot = 0; slot < head.numSlots; slot++) {
+      attrCatBlock.getRecord(record, slot);
+      if (strcmp(record[ATTRCAT_REL_NAME_INDEX].sVal, relName) == 0) {
+        AttrCacheEntry* attrCacheEntry = (AttrCacheEntry*)malloc(sizeof(AttrCacheEntry));
+        AttrCacheTable::recordToAttrCatEntry(record, &attrCacheEntry->attrCatEntry);
+        attrCacheEntry->recId.block = attrCatBlockNum;
+        attrCacheEntry->recId.slot = slot;
+        attrCacheEntry->next = nullptr;
+
+        if (head_ == nullptr) {
+          head_ = attrCacheEntry;
+          tail_ = attrCacheEntry;
+        } else {
+          tail_->next = attrCacheEntry;
+          tail_ = attrCacheEntry;
+        }
+      }
+    }
+
+    attrCatBlockNum = head.rblock;
+  }
+
+  AttrCacheTable::attrCache[relId] = head_;
+                         
+  return relId;
+}
+
+int OpenRelTable::getRelId(char relName[ATTR_SIZE]){
+  for(int relId = 0; relId < MAX_OPEN; relId++){
+    if(RelCacheTable::relCache[relId] != nullptr && strcmp(RelCacheTable::relCache[relId]->relCatEntry.relName, relName) == 0){
+      return relId;
+    }
+  }
+  
+  return OpenRelTable::openRel(relName);
+}
+

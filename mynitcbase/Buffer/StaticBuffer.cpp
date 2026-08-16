@@ -7,7 +7,7 @@ StaticBuffer::StaticBuffer(){
     for(int i = 0; i < BUFFER_CAPACITY; i++){
         metainfo[i].free = true; 
     }
-}
+}           
 
 StaticBuffer::~StaticBuffer() {}
 
@@ -41,7 +41,7 @@ int StaticBuffer::getBufferNum(int blockNum){
     for(int i = 0; i < BUFFER_CAPACITY; i++){
         if(metainfo[i].blockNum == blockNum){
             return i;
-        }
+        }   
     }
 
     return E_BLOCKNOTINBUFFER;
