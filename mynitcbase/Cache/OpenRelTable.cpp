@@ -215,12 +215,15 @@ int OpenRelTable::openRel(char relName[ATTR_SIZE]){
 }
 
 int OpenRelTable::getRelId(char relName[ATTR_SIZE]){
-  for(int relId = 0; relId < MAX_OPEN; relId++){
-    if(RelCacheTable::relCache[relId] != nullptr && strcmp(RelCacheTable::relCache[relId]->relCatEntry.relName, relName) == 0){
-      return relId;
-    }
+  
+  if(strcmp(relName, RELCAT_RELNAME) == 0){
+    return RELCAT_RELID;
   }
   
-  return OpenRelTable::openRel(relName);
+  if(strcmp(relName, ATTRCAT_RELNAME) == 0){
+    return ATTRCAT_RELID;
+  }
+
+  return E_RELNOTOPEN;
 }
 

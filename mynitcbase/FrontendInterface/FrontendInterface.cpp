@@ -23,6 +23,11 @@ void printErrorMsg(int error);
 
 void printHelp();
 
+int Frontend::select_from_table_where(char relname_source[ATTR_SIZE], char relname_target[ATTR_SIZE],
+                                      char attribute[ATTR_SIZE], int op, char value[ATTR_SIZE]) {
+  return Algebra::select(relname_source, relname_target, attribute, op, value);
+}
+
 // extract tokens delimited by whitespace and comma
 vector<string> RegexHandler::extractTokens(string input) {
   regex re("\\s*,\\s*|\\s+");
